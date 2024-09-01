@@ -1,0 +1,14 @@
+﻿{
+  "name": "com.akeit0.ildiscard",
+  "version": "1.0.0",
+  "displayName": "ILDiscard",
+  "description": "",
+  "unity": "2022.3",
+  "dependencies": {
+    "com.unity.nuget.mono-cecil": "1.11.4"
+  },
+  "author": {
+    "name": "Akeit0",
+    "url": "https://github.com/Akeit0"
+  }
+}

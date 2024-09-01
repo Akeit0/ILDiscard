@@ -36,14 +36,17 @@ namespace ILDiscard.CodeGen
             if (!WillProcess(compiledAssembly))
                 return new(null);
 
-
+            
+            var folderList =  compiledAssembly.References
+                .Select(reference => Path.Combine(Environment.CurrentDirectory, Path.GetDirectoryName(reference)))
+                .Distinct().OrderBy(x => x);
+            
             var loader = new AssemblyResolver();
-
-            var folders = new HashSet<string>();
-            foreach (var reference in compiledAssembly.References) folders.Add(Path.Combine(Environment.CurrentDirectory, Path.GetDirectoryName(reference)));
-
-            var folderList = folders.OrderBy(x => x);
-            foreach (var folder in folderList) loader.AddSearchDirectory(folder);
+            
+            foreach (var folder in  folderList)
+            {
+                loader.AddSearchDirectory(folder);
+            }
 
             var readerParameters = new ReaderParameters
             {

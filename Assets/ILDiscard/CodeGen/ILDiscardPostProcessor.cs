@@ -36,7 +36,7 @@ namespace ILDiscard.CodeGen
             if (!WillProcess(compiledAssembly))
                 return new(null);
 
-            
+
             var loader = new AssemblyResolver();
 
             var folders = new HashSet<string>();
@@ -59,27 +59,22 @@ namespace ILDiscard.CodeGen
 
             var diagnostics = ProcessAssembly(assembly);
 
-            byte[] peData;
-            byte[] pdbData;
+
+            var peStream = new MemoryStream();
+            var pdbStream = new MemoryStream();
+            var writeParameters = new WriterParameters
             {
-                var peStream = new MemoryStream();
-                var pdbStream = new MemoryStream();
-                var writeParameters = new WriterParameters
-                {
-                    SymbolWriterProvider = new PortablePdbWriterProvider(),
-                    WriteSymbols = true,
-                    SymbolStream = pdbStream
-                };
+                SymbolWriterProvider = new PortablePdbWriterProvider(),
+                WriteSymbols = true,
+                SymbolStream = pdbStream
+            };
 
-                assembly.Write(peStream, writeParameters);
-                peStream.Flush();
-                pdbStream.Flush();
+            assembly.Write(peStream, writeParameters);
+            peStream.Flush();
+            pdbStream.Flush();
 
-                peData = peStream.ToArray();
-                pdbData = pdbStream.ToArray();
-            }
 
-            return new ILPostProcessResult(new InMemoryAssembly(peData, pdbData), diagnostics);
+            return new ILPostProcessResult(new InMemoryAssembly(peStream.ToArray(), pdbStream.ToArray()), diagnostics);
         }
 
         List<DiagnosticMessage> ProcessAssembly(AssemblyDefinition assemblyDefinition)
@@ -135,7 +130,6 @@ namespace ILDiscard.CodeGen
                             if (ToRemove(withOutDiscardAttribute, fieldDefinition.CustomAttributes))
                             {
                                 toRemove.Add(fieldDefinition);
-                               
                             }
                         }
 

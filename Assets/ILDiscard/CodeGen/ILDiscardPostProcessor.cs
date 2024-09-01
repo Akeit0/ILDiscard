@@ -36,14 +36,14 @@ namespace ILDiscard.CodeGen
             if (!WillProcess(compiledAssembly))
                 return new(null);
 
-            
-            var folderList =  compiledAssembly.References
+
+            var folderList = compiledAssembly.References
                 .Select(reference => Path.Combine(Environment.CurrentDirectory, Path.GetDirectoryName(reference)))
                 .Distinct().OrderBy(x => x);
-            
+
             var loader = new AssemblyResolver();
-            
-            foreach (var folder in  folderList)
+
+            foreach (var folder in folderList)
             {
                 loader.AddSearchDirectory(folder);
             }
@@ -124,52 +124,65 @@ namespace ILDiscard.CodeGen
                         return;
 
 
-                    var withOutDiscardAttribute = (options & DiscardMembersOptions.DiscardByDefault) != 0;
+                    var optOut = (options & DiscardMembersOptions.DiscardByDefault) != 0;
+
+                    bool ToRemove(Collection<CustomAttribute> customAttributes)
                     {
-                        var toRemove = new List<object>();
-                        foreach (var fieldDefinition in typeDefinition.Fields)
+                        foreach (var attribute in customAttributes)
                         {
-                            if (fieldDefinition.IsSpecialName || fieldDefinition.IsCompilerControlled) continue;
-                            if (ToRemove(withOutDiscardAttribute, fieldDefinition.CustomAttributes))
-                            {
-                                toRemove.Add(fieldDefinition);
-                            }
+                            var type = attribute.AttributeType;
+                            if (type.Namespace != "ILDiscard") continue;
+                            var name = type.Name;
+                            if (name == "DontDiscardAttribute") return false;
+                            if (name == "DiscardAttribute") return true;
                         }
 
-                        foreach (var f in toRemove)
-                        {
-                            typeDefinition.Fields.Remove((FieldDefinition)f);
-                        }
+                        return optOut;
+                    }
 
-                        toRemove.Clear();
-                        foreach (var propertyDefinition in typeDefinition.Properties)
+                    var toRemove = new List<object>();
+                    foreach (var fieldDefinition in typeDefinition.Fields)
+                    {
+                        if (fieldDefinition.IsSpecialName || fieldDefinition.IsCompilerControlled) continue;
+                        if (ToRemove(fieldDefinition.CustomAttributes))
                         {
-                            if (propertyDefinition.IsSpecialName) continue;
-                            if (ToRemove(withOutDiscardAttribute, propertyDefinition.CustomAttributes))
-                            {
-                                toRemove.Add(propertyDefinition);
-                            }
+                            toRemove.Add(fieldDefinition);
                         }
+                    }
 
-                        foreach (var f in toRemove)
-                        {
-                            typeDefinition.Properties.Remove((PropertyDefinition)f);
-                        }
+                    foreach (var f in toRemove)
+                    {
+                        typeDefinition.Fields.Remove((FieldDefinition)f);
+                    }
 
-                        toRemove.Clear();
-                        foreach (var methodDefinition in typeDefinition.Methods)
+                    toRemove.Clear();
+                    foreach (var propertyDefinition in typeDefinition.Properties)
+                    {
+                        if (propertyDefinition.IsSpecialName) continue;
+                        if (ToRemove(propertyDefinition.CustomAttributes))
                         {
-                            if (methodDefinition.IsSpecialName) continue;
-                            if (ToRemove(withOutDiscardAttribute, methodDefinition.CustomAttributes))
-                            {
-                                toRemove.Add(methodDefinition);
-                            }
+                            toRemove.Add(propertyDefinition);
                         }
+                    }
 
-                        foreach (var f in toRemove)
+                    foreach (var f in toRemove)
+                    {
+                        typeDefinition.Properties.Remove((PropertyDefinition)f);
+                    }
+
+                    toRemove.Clear();
+                    foreach (var methodDefinition in typeDefinition.Methods)
+                    {
+                        if (methodDefinition.IsSpecialName) continue;
+                        if (ToRemove(methodDefinition.CustomAttributes))
                         {
-                            typeDefinition.Methods.Remove((MethodDefinition)f);
+                            toRemove.Add(methodDefinition);
                         }
+                    }
+
+                    foreach (var f in toRemove)
+                    {
+                        typeDefinition.Methods.Remove((MethodDefinition)f);
                     }
                 }
             }
@@ -181,21 +194,6 @@ namespace ILDiscard.CodeGen
             }
 
             return diagnostics;
-        }
-
-
-        static bool ToRemove(bool optOut, Collection<CustomAttribute> customAttributes)
-        {
-            foreach (var attribute in customAttributes)
-            {
-                var type = attribute.AttributeType;
-                if (type.Namespace != "ILDiscard") continue;
-                var name = type.Name;
-                if (name == "DontDiscardAttribute") return false;
-                if (name == "DiscardAttribute") return true;
-            }
-
-            return optOut;
         }
     }
 }
